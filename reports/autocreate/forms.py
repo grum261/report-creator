@@ -1,8 +1,8 @@
 from django import forms
-from .models import CompanyINN
+from .models import Company
 
 
 class CompanyINNForm(forms.ModelForm):
     class Meta:
-        model = CompanyINN
-        fields = ['inn', ]
+        model = Company
+        fields = ('inn', )

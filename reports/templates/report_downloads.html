@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<head>
+    <title>ТАТАТ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
+
+    <style>
+        .m-table tr, .m-table th {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<table class="m-table table table-striped">
+    <thead>
+        <th width="30%">Название ООО</th>
+        <th width="30%">ИНН</th>
+        <th width="40%">Ссылка</th>
+    </thead>
+    <tbody>
+        {% for company in companies %}
+        <tr>
+            <td width="40%">{{ company.name }}</td>
+            <td width="40%">{{ company.inn }}</td>
+            <td width="20%"><a href="{{ company.report_path }}">Скачать</td>
+        </tr>    
+        {% endfor %}
+    </tbody>
+</table>
+</body>

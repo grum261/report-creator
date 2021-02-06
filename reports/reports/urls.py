@@ -16,8 +16,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from autocreate import views
+from django.conf.urls.static import static
+from django.conf import settings
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('inn/create/', views.inn_create, name='inn_create'),
-]
+    path('report/create/', views.inn_send_form, name='inn_send_form'),
+    path('report/downloads/', views.report_downloads, name='report_downloads')
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,10 +1,6 @@
 from django.contrib import admin
-from .models import CompanyINN, CompanyReport
+from .models import Company
 
-@admin.register(CompanyINN)
-class CompanyINNAdmin(admin.ModelAdmin):
-    list_display = ('inn', )
-
-@admin.register(CompanyReport)
-class CompanyReportAdmin(admin.ModelAdmin):
-    list_display = ('inn', 'report', )
+@admin.register(Company)
+class CompanyAdmin(admin.ModelAdmin):
+    list_display = ('inn', 'name', 'report_path')

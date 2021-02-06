@@ -1,15 +1,18 @@
 # Обернуть все декораторами и распихать красиво по классам
-
+import re
+import os
 import requests
 import locale
-import re
+
+from .models import Company
 
 from time import time
+from datetime import datetime
 from typing import Dict, List, Union, Tuple
 from docxtpl import DocxTemplate
-from datetime import datetime
-from .models import CompanyReport
-from django.core.files import File
+
+from django.conf import settings
+
 
 locale.setlocale(locale.LC_ALL, 'ru_RU.UTF-8')
 
@@ -312,148 +315,153 @@ def contracts_participant_and_customer(response: Dict) -> str:
     except requests.HTTPError:
         return None  """ 
 
-class ReportCreateMiddleware:
-    def __init__(self, get_response):
-        self._get_response = get_response
+def generate_reports(request):
+  start = time()
+  inn_list = list(request.POST.get('inn').split(', '))
 
-    def __call__(self, request):
-        response = self._get_response(request)
-        if request.method == 'POST':
-            print(request.POST['inn'])
-            inn_list = list(request.POST['inn'].split(', '))
-            start = time()
+  companies = []
 
-            for inn in inn_list:
-                payload = {'inn': inn, 'key': '3208d29d15c507395db770d0e65f3711e40374df'}
+  for inn in inn_list:
+    payload = {'inn': inn, 'key': '3208d29d15c507395db770d0e65f3711e40374df'}
+    
+    focus_responses = []
+    for method in ['req', 'egrDetails', 'analytics', 'sites','contacts', 'fssp', 'buh']:
+      try:
+        res = requests.get(BASE_URL + method, params=payload)
+        res.raise_for_status()
+        focus_responses.append(res.json()[0])
+      except requests.HTTPError:
+        focus_responses.append(None)
 
-                responses = []
-                for method in ['req', 'egrDetails', 'analytics', 'sites','contacts', 'fssp', 'buh']:
-                    try:
-                        res = requests.get(BASE_URL + method, params=payload)
-                        res.raise_for_status()
-                        responses.append(res.json()[0])
-                    except requests.HTTPError:
-                        responses.append(None)
+    req, egr, analytics, sites, contacts, fssp, buh = focus_responses
 
-                req, egr, analytics, sites, contacts, fssp, buh = responses
+    """req, egr, analytics, sites, contacts, fssp, buh = tuple(map(response_to_dict, [
+      'req', 'egrDetails', 'analytics', 'sites','contacts', 'fssp', 'buh'
+    ]))"""
                 
-                # Здесь ужас, не смотрите
-                try:
-                    defendant_all_count = [
-                    verbose_number(analytics['analytics']['q2002'], ('делу', 'делам', 'делам')),
-                    verbose_number(analytics['analytics']['q2002'])
-                    ]
-                except KeyError:
-                    defendant_all_count = None
+    # Здесь ужас, надо вынести в отдельную функцию для исключений
+    try:
+      defendant_all_count = [
+        verbose_number(analytics['analytics']['q2002'], ('делу', 'делам', 'делам')),
+        verbose_number(analytics['analytics']['q2002'])
+      ]
+    except KeyError:
+      defendant_all_count = None
 
-                try:
-                    defendant_all_sum = money_sum_repr(analytics['analytics']['s2002']) + ' руб.'
-                except KeyError:
-                    defendant_all_sum = None
+    try:
+      defendant_all_sum = money_sum_repr(analytics['analytics']['s2002']) + ' руб.'
+    except KeyError:
+      defendant_all_sum = None
 
-                try:
-                    claimant_all_count = [
-                    verbose_number(analytics['analytics']['q2004'], ('делу', 'делам', 'делам')),
-                    verbose_number(analytics['analytics']['q2004'])
-                    ]
-                except KeyError:
-                    claimant_all_count = None
+    try:
+      claimant_all_count = [
+        verbose_number(analytics['analytics']['q2004'], ('делу', 'делам', 'делам')),
+        verbose_number(analytics['analytics']['q2004'])
+      ]
+    except KeyError:
+      claimant_all_count = None
 
-                try:
-                    claimant_all_sum = money_sum_repr(analytics['analytics']['s2004']) + ' руб.'
-                except KeyError:
-                    claimant_all_sum = None
+    try:
+      claimant_all_sum = money_sum_repr(analytics['analytics']['s2004']) + ' руб.'
+    except KeyError:
+      claimant_all_sum = None
 
-                try:
-                    sites = ', '.join(sites['sites'][:2])
-                except KeyError:
-                    sites = None
+    try:
+      sites = ', '.join(sites['sites'][:2])
+    except KeyError:
+      sites = None
 
-                if len(inn) == 12:
-                    type_of_UL = 'IP'
+    if len(inn) == 12:
+      type_of_UL = 'IP'
 
-                    try:
-                        dissolution_date = req[type_of_UL]['dissolutionDate']
-                        status_text = req[type_of_UL]['status']['statusString']
-                    except KeyError:
-                        dissolution_date = status_text = None
-                    
-                    context = {
-                        # Шапка
-                        'name': f"ИП {req[type_of_UL]['fio']}",
-                        'inn': inn,
-                        'address': full_address(egr, type_of_UL),
-                        'registration_date': registration_date(req, type_of_UL),
-                        'dissolution_date': datetime.strptime(dissolution_date, '%Y-%m-%d').strftime('%d %B %Y г.') if dissolution_date else None,
-                        'status_text': status_text,
-                        'sites': sites,
-                        'phones': ', '.join(contacts['contactPhones']['phones'][:2]) if contacts and contacts['contactPhones']['phones'] else None,
-                        'activity': activity(egr),
-                        # Арбитражи
-                        'defendant_all_count': defendant_all_count, # Общее количество арбитражей в качестве ответчика
-                        'defendant_all_sum': defendant_all_sum, # Общая сумма арбитражей в качестве ответчика
-                        # 2011 проигранные, 2012 частично проигранные, 2013 не проигранные, 2014 на рассмотрении, 2015 неопределенный исход
-                        'defendant_representation': defendant_sum_and_count(analytics),
-                        'most_valuable_arbitrations': most_valuable_arbitrations(analytics),
-                        # Арбитражи: истец
-                        'claimant_all_count': claimant_all_count,
-                        'claimant_all_sum': claimant_all_sum,
-                        'claimant_representation': claimant_sum_and_count(analytics),
-                        # ФССП
-                        'fssp_count_and_sum': fssp_sum_and_count(fssp),
-                        # Фин. анализ
-                        'finance_analysis_code': finance_code(analytics),
-                        # Гос. контракты
-                        'participant': contracts_participant_and_customer(analytics)[0],
-                        'customer': contracts_participant_and_customer(analytics)[1],
-                    } # Контекст рендера для ИП
-                else:
-                    type_of_UL = 'UL'
-                    try:
-                        stated_capital = money_sum_repr(egr[type_of_UL]['statedCapital']['sum'])
-                    except KeyError:
-                        stated_capital = None
+      try:
+        dissolution_date = req[type_of_UL]['dissolutionDate']
+        status_text = req[type_of_UL]['status']['statusString']
+      except KeyError:
+        dissolution_date = status_text = None
+        
+      context = {
+                # Шапка
+                'name': f"ИП {req[type_of_UL]['fio']}",
+                'inn': inn,
+                'address': full_address(egr, type_of_UL),
+                'registration_date': registration_date(req, type_of_UL),
+                'dissolution_date': datetime.strptime(dissolution_date, '%Y-%m-%d').strftime('%d %B %Y г.') if dissolution_date else None,
+                'status_text': status_text,
+                'sites': sites,
+                'phones': ', '.join(contacts['contactPhones']['phones'][:2]) if contacts and contacts['contactPhones']['phones'] else None,
+                'activity': activity(egr, type_of_UL),
+                # Арбитражи
+                'defendant_all_count': defendant_all_count, # Общее количество арбитражей в качестве ответчика
+                'defendant_all_sum': defendant_all_sum, # Общая сумма арбитражей в качестве ответчика
+                # 2011 проигранные, 2012 частично проигранные, 2013 не проигранные, 2014 на рассмотрении, 2015 неопределенный исход
+                'defendant_representation': defendant_sum_and_count(analytics),
+                'most_valuable_arbitrations': most_valuable_arbitrations(analytics),
+                # Арбитражи: истец
+                'claimant_all_count': claimant_all_count,
+                'claimant_all_sum': claimant_all_sum,
+                'claimant_representation': claimant_sum_and_count(analytics),
+                # ФССП
+                'fssp_count_and_sum': fssp_sum_and_count(fssp),
+                # Фин. анализ
+                'finance_analysis_code': finance_code(analytics),
+                # Гос. контракты
+                'participant': contracts_participant_and_customer(analytics)[0],
+                'customer': contracts_participant_and_customer(analytics)[1],
+      } # Контекст рендера для ИП
+    else:
+      type_of_UL = 'UL'
+      try:
+        stated_capital = money_sum_repr(egr[type_of_UL]['statedCapital']['sum'])
+      except KeyError:
+        stated_capital = None
 
-                    context = {
-                        # Шапка
-                        'name': req[type_of_UL]['legalName']['readable'],
-                        'inn': inn,
-                        'address': full_address(req, type_of_UL),
-                        'registration_date': registration_date(req, type_of_UL),
-                        'heads': heads(req, type_of_UL),
-                        'founders': founders(egr, type_of_UL),
-                        'sites': sites,
-                        'phones': ', '.join(contacts['contactPhones']['phones'][:2]) if contacts and contacts['contactPhones']['phones'] else None,
-                        'stated_capital': stated_capital,
-                        'activity': activity(egr, type_of_UL),
-                        # Арбитражи: ответчик
-                        'defendant_all_count': defendant_all_count, # Общее количество арбитражей в качестве ответчика
-                        'defendant_all_sum': defendant_all_sum, # Общая сумма арбитражей в качестве ответчика
-                        # 2011 проигранные, 2012 частично проигранные, 2013 не проигранные, 2014 на рассмотрении, 2015 неопределенный исход
-                        'defendant_representation': defendant_sum_and_count(analytics),
-                        'most_valuable_arbitrations': most_valuable_arbitrations(analytics),
-                        # Арбитражи: истец
-                        'claimant_all_count': claimant_all_count,
-                        'claimant_all_sum': claimant_all_sum,
-                        'claimant_representation': claimant_sum_and_count(analytics),
-                        # ФССП
-                        'fssp_count_and_sum': fssp_sum_and_count(fssp),
-                        # Фин. анализ
-                        'finance_analysis_code': finance_code(analytics),
-                        # Гос. контракты
-                        'participant': contracts_participant_and_customer(analytics)[0] if contracts_participant_and_customer(analytics) else None,
-                        'customer': contracts_participant_and_customer(analytics)[1] if contracts_participant_and_customer(analytics) else None,
-                    } # Контекст рендера для ЮЛ
+      context = {
+                # Шапка
+                'name': req[type_of_UL]['legalName']['readable'],
+                'inn': inn,
+                'address': full_address(req, type_of_UL),
+                'registration_date': registration_date(req, type_of_UL),
+                'heads': heads(req, type_of_UL),
+                'founders': founders(egr, type_of_UL),
+                'sites': sites,
+                'phones': ', '.join(contacts['contactPhones']['phones'][:2]) if contacts and contacts['contactPhones']['phones'] else None,
+                'stated_capital': stated_capital,
+                'activity': activity(egr, type_of_UL),
+                # Арбитражи: ответчик
+                'defendant_all_count': defendant_all_count, # Общее количество арбитражей в качестве ответчика
+                'defendant_all_sum': defendant_all_sum, # Общая сумма арбитражей в качестве ответчика
+                # 2011 проигранные, 2012 частично проигранные, 2013 не проигранные, 2014 на рассмотрении, 2015 неопределенный исход
+                'defendant_representation': defendant_sum_and_count(analytics),
+                'most_valuable_arbitrations': most_valuable_arbitrations(analytics),
+                # Арбитражи: истец
+                'claimant_all_count': claimant_all_count,
+                'claimant_all_sum': claimant_all_sum,
+                'claimant_representation': claimant_sum_and_count(analytics),
+                # ФССП
+                'fssp_count_and_sum': fssp_sum_and_count(fssp),
+                # Фин. анализ
+                'finance_analysis_code': finance_code(analytics),
+                # Гос. контракты
+                'participant': contracts_participant_and_customer(analytics)[0] if contracts_participant_and_customer(analytics) else None,
+                'customer': contracts_participant_and_customer(analytics)[1] if contracts_participant_and_customer(analytics) else None,
+      } # Контекст рендера для ЮЛ
 
-                file_name = re.sub(r'[<>"\*:/|\?\\]', '', context['name'])
+    company_name = re.sub(r'[<>"\*:/|\?\\]', '', context['name'])
+    report_path = f'/media/{company_name}.docx'
 
-                template = DocxTemplate('/home/grum231/prog/python/reports/template.docx')
-                template.render(context)
-                template.save(f'/mnt/c/Users/grum231/Desktop/{file_name}.docx')
+    template = DocxTemplate('../template.docx')
+    template.render(context)
+    template.save(os.path.join(settings.BASE_DIR, f'media/{company_name}.docx'))
 
-                end = time()
-                print(f"Время выполнения: {round(end - start, 2)} секунд")
-                print(context['name'])
-                #print(Company.report.url)
+    company = Company(inn=inn, name=company_name, report_path=report_path)
+    company.save()
 
-        return response
+    companies.append({'name': company_name, 'inn': inn, 'path': report_path})
+
+  end = time()
+  print(f"Время выполнения: {round(end - start, 2)} секунд")
+
+  print(companies)
+
+  return companies
