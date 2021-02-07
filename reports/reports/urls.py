@@ -18,9 +18,13 @@ from django.urls import path
 from autocreate import views
 from django.conf.urls.static import static
 from django.conf import settings
+from django.views.generic.base import RedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', RedirectView.as_view(url='report/create/'), name='redirect_to_report'),
     path('report/create/', views.inn_send_form, name='inn_send_form'),
     path('report/downloads/', views.report_downloads, name='report_downloads')
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + static(
+    settings.STATIC_URL, document_root=settings.STATIC_ROOT
+)

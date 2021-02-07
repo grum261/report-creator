@@ -11,7 +11,7 @@
     </style>-->
 </head>
 <body>
-<table class="m-table table table-striped">
+<table class="table table-hover">
     <thead>
         <th width="30%">Название ООО</th>
         <th width="30%">ИНН</th>
@@ -22,7 +22,7 @@
         <tr>
             <td width="40%">{{ company.name }}</td>
             <td width="40%">{{ company.inn }}</td>
-            <td width="20%"><a href="{{ company.path }}">Скачать</td>
+	    <td width="20%"><a class="btn btn-outline-primary" role="button" href="../../{{ company.path }}">Скачать</td>
         </tr>    
         {% endfor %}
     </tbody>

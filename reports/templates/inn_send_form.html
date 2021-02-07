@@ -1,11 +1,32 @@
 <!DOCTYPE html>
 <head>
     <title>Хует</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
 </head>
 <body>
-    <form action="{% url 'report_downloads' %}" method="POST">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button class="button" type="submit" >Отправить</button>
-    </form>
+<form action="{% url 'report_downloads' %}" method="POST">
+	<div class="input-group mb-3">
+		{% csrf_token %}
+		{{ form.inn }}
+		<button class="btn btn-outline-primary" type="submit" id="button-addon2">Отправить</button>
+	</div>
+</form>
+<table class="table table-hover">
+	<thead>
+		<th width="50%">ЮЛ</th>
+		<th width="50%">ИП</th>
+	</thead>
+	<tbody>
+		<tr><td>6663003127</td><td>561100409545</td></tr>
+		<tr><td>7708503727</td><td>666200351548</td></tr>
+		<tr><td>7736050003</td><td>366512608416</td></tr>
+		<tr><td>7452027843</td><td>773173084809</td></tr>
+		<tr><td>6658021579</td><td>771409116994</td></tr>
+		<tr><td>7725604637</td><td>503115929542</td></tr>
+		<tr><td>4401006984</td><td>773400211252</td></tr>
+		<tr><td>3016003718</td><td>771902452360</td></tr>
+		<tr><td>5053051872</td><td>702100195003</td></tr>
+	</tbody>
+</table>
 </body>

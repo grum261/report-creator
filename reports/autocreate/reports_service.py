@@ -448,19 +448,15 @@ def generate_reports(request):
       } # Контекст рендера для ЮЛ
 
     company_name = re.sub(r'[<>"\*:/|\?\\]', '', context['name'])
-    report_path = f'/media/{company_name}.docx'
+    report_path = f'media/{company_name}.docx'
 
-    template = DocxTemplate('../template.docx')
+    if not os.path.exists(os.path.join(settings.BASE_DIR, report_path)):
+        company = Company(inn=inn, name=company_name, report_path=report_path)
+        company.save()
 
-    if os.path.exists(os.path.join(settings.BASE_DIR, f'media/{company_name}.docx')):
-      template.render(context)
-    else:
-      template.render(context)
-
-      company = Company(inn=inn, name=company_name, report_path=f'media/{company_name}.docx')
-      company.save()
-
-    template.save(os.path.join(settings.BASE_DIR, f'media/{company_name}.docx'))
+    template = DocxTemplate('home/ubuntu/prog/python/report-creator/template.docx')
+    template.render(context)
+    template.save(os.path.join(settings.BASE_DIR, report_path))
 
     companies.append({'name': company_name, 'inn': inn, 'path': report_path})
 

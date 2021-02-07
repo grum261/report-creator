@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = '4mt1z8hk91#kqh92sy-abm2560wz=mzmmw#j8dxgalqb^urp0n'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -78,12 +78,12 @@ WSGI_APPLICATION = 'reports.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': os.getenv('db_name'),
-        'USER': os.getenv('db_username'),
-        'PASSWORD': os.getenv('user_password'),
-        'HOST': os.getenv('host'),
-        'PORT': os.getenv('port')
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'reports',
+        'USER': 'grum231',
+        'PASSWORD': 'jeJiqNxu6nqC',
+        'HOST': 'localhost',
+        'PORT': ''
     }
 }
 
