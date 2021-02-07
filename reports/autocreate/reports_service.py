@@ -450,17 +450,26 @@ def generate_reports(request):
     company_name = re.sub(r'[<>"\*:/|\?\\]', '', context['name'])
     report_path = f'/media/{company_name}.docx'
 
-    template = DocxTemplate('../template.docx')
-    template.render(context)
-    template.save(os.path.join(settings.BASE_DIR, f'media/{company_name}.docx'))
+    if os.path.exists(report_path):
+      template = DocxTemplate('../template.docx')
+      template.render(context)
+      template.save(os.path.join(settings.BASE_DIR, f'media/{company_name}.docx'))
+    else:
+      template = DocxTemplate('../template.docx')
+      template.render(context)
+      template.save(os.path.join(settings.BASE_DIR, f'media/{company_name}.docx'))
 
-    company = Company(inn=inn, name=company_name, report_path=report_path)
-    company.save()
+      company = Company(inn=inn, name=company_name, report_path=report_path)
+      company.save()
 
     companies.append({'name': company_name, 'inn': inn, 'path': report_path})
 
+    end_report = time()
+
+    print(f'Время выполнения одного отчета: {end_report - start} секунд.')
+
   end = time()
-  print(f"Время выполнения: {round(end - start, 2)} секунд")
+  print(f"\nВремя выполнения: {round(end - start, 2)} секунд.")
 
   print(companies)
 
