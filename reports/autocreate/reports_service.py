@@ -450,17 +450,17 @@ def generate_reports(request):
     company_name = re.sub(r'[<>"\*:/|\?\\]', '', context['name'])
     report_path = f'/media/{company_name}.docx'
 
-    if os.path.exists(report_path):
-      template = DocxTemplate('../template.docx')
-      template.render(context)
-      template.save(os.path.join(settings.BASE_DIR, f'media/{company_name}.docx'))
-    else:
-      template = DocxTemplate('../template.docx')
-      template.render(context)
-      template.save(os.path.join(settings.BASE_DIR, f'media/{company_name}.docx'))
+    template = DocxTemplate('../template.docx')
 
-      company = Company(inn=inn, name=company_name, report_path=report_path)
+    if os.path.exists(os.path.join(settings.BASE_DIR, f'media/{company_name}.docx')):
+      template.render(context)
+    else:
+      template.render(context)
+
+      company = Company(inn=inn, name=company_name, report_path=f'media/{company_name}.docx')
       company.save()
+
+    template.save(os.path.join(settings.BASE_DIR, f'media/{company_name}.docx'))
 
     companies.append({'name': company_name, 'inn': inn, 'path': report_path})
 
